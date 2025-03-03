@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 
 class RecognitionScreen extends StatefulWidget {
@@ -15,12 +16,13 @@ class _RecognitionScreenState extends State<RecognitionScreen> {
   late TextRecognizer textRecognizer;
   String recognizedText = '';
   bool isProcessing = true;
+  bool isError = false;
 
   @override
   void initState() {
     super.initState();
     textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-    doTextRecognition();
+    _doTextRecognition();
   }
 
   @override
@@ -29,162 +31,142 @@ class _RecognitionScreenState extends State<RecognitionScreen> {
     super.dispose();
   }
 
-  doTextRecognition() async {
+  Future<void> _doTextRecognition() async {
     try {
-      final InputImage inputImage = InputImage.fromFile(widget.image);
-      final RecognizedText result =
-          await textRecognizer.processImage(inputImage);
+      final inputImage = InputImage.fromFile(widget.image);
+      final result = await textRecognizer.processImage(inputImage);
 
-      setState(() {
-        recognizedText = result.text;
-        isProcessing = false;
-      });
+      if (mounted) {
+        setState(() {
+          recognizedText = result.text;
+          isProcessing = false;
+          isError = false;
+        });
+      }
     } catch (e) {
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal mengenali teks!')),
-      );
-      setState(() {
-        isProcessing = false;
-      });
+      if (mounted) {
+        setState(() {
+          isProcessing = false;
+          isError = true;
+        });
+      }
+      _showSnackbar("Gagal mengenali teks: $e");
     }
   }
 
-  void copyToClipboard() {
-    Clipboard.setData(ClipboardData(text: recognizedText));
+  void _showSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Teks berhasil disalin ke clipboard!')),
+      SnackBar(
+        content: Text(message, style: GoogleFonts.poppins(fontSize: 14)),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.blueAccent,
+      ),
     );
+  }
+
+  void _copyToClipboard() {
+    if (recognizedText.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: recognizedText));
+      _showSnackbar("Teks berhasil disalin!");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: const Text(
-          'Result',
-          style: TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
+        title: Text("Hasil Pemindaian",
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
         centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  widget.image,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(height: 20),
-              isProcessing
-                  ? const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Center(
-                        child: Column(
+      body: isProcessing
+          ? const Center(
+              child: CircularProgressIndicator(color: Colors.blueAccent))
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(widget.image, fit: BoxFit.cover),
+                  ),
+                  const SizedBox(height: 10),
+                  isError
+                      ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            SizedBox(
-                              width: 50,
-                              height: 50,
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.blueAccent),
-                                strokeWidth: 5,
-                              ),
-                            ),
-                            SizedBox(height: 24),
                             Text(
-                              'Mengidentifikasi Text...',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              "Terjadi kesalahan saat memindai teks!",
+                              style: GoogleFonts.poppins(
+                                  color: Colors.red, fontSize: 16),
                             ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : recognizedText.isNotEmpty
-                      ? Stack(
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.black,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.white,
-                                    blurRadius: 1,
-                                  )
-                                ],
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Hasil:',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white.withOpacity(0.4),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    SelectableText(
-                                      recognizedText,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.white,
-                                        height: 1.5,
-                                      ),
-                                      textAlign: TextAlign.justify,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: 4,
-                              right: 0,
-                              child: ElevatedButton(
-                                onPressed: copyToClipboard,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: const Icon(Icons.copy, size: 20),
+                            const SizedBox(height: 10),
+                            ElevatedButton.icon(
+                              onPressed: _doTextRecognition,
+                              icon: const Icon(Icons.refresh,
+                                  color: Colors.white),
+                              label: Text("Coba Lagi",
+                                  style: GoogleFonts.poppins()),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blueAccent,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
                           ],
                         )
-                      : const Center(
-                          child: Text(
-                            'Teks tidak ditemukan!',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.redAccent,
-                              fontWeight: FontWeight.bold,
+                      : Column(
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: recognizedText.isNotEmpty
+                                  ? _copyToClipboard
+                                  : null,
+                              icon: const Icon(Icons.copy, color: Colors.white),
+                              label: Text("Salin Teks",
+                                  style: GoogleFonts.poppins()),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: recognizedText.isNotEmpty
+                                    ? Colors.blueAccent
+                                    : Colors.grey,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 10),
+                            recognizedText.isNotEmpty
+                                ? Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: SingleChildScrollView(
+                                      child: Text(
+                                        recognizedText,
+                                        style:
+                                            GoogleFonts.poppins(fontSize: 16),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Text(
+                                      "Teks Tidak Ditemukan!",
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.red, fontSize: 16),
+                                    ),
+                                  ),
+                          ],
                         ),
-            ],
-          ),
-        ),
-      ),
+                ],
+              ),
+            ),
     );
   }
 }

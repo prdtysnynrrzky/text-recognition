@@ -1,0 +1,2 @@
+D:/text-recognition/android/app/.cxx/Debug/536f323n/x86_64/CMakeFiles/edit_cache.dir
+D:/text-recognition/android/app/.cxx/Debug/536f323n/x86_64/CMakeFiles/rebuild_cache.dir

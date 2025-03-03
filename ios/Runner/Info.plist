@@ -51,5 +51,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Kami membutuhkan akses ke kamera untuk pemindaian teks</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Kami membutuhkan akses ke galeri untuk memilih gambar</string>
+
 </dict>
 </plist>
